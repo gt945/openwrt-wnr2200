@@ -14,7 +14,9 @@
 #include <linux/mtd/partitions.h>
 
 #include <asm/mach-ath79/ath79.h>
+#include <asm/mach-ath79/ar71xx_regs.h>
 
+#include "common.h"
 #include "dev-ap9x-pci.h"
 #include "dev-eth.h"
 #include "dev-gpio-buttons.h"
@@ -23,33 +25,42 @@
 #include "dev-usb.h"
 #include "machtypes.h"
 
-#define WNR2200_GPIO_LED_LAN2_AMBER	0
-#define WNR2200_GPIO_LED_LAN4_AMBER	1
-#define WNR2200_GPIO_LED_WPS		5
-#define WNR2200_GPIO_LED_WAN_GREEN	7
-#define WNR2200_GPIO_LED_USB		8
-#define WNR2200_GPIO_LED_LAN3_AMBER	11
-#define WNR2200_GPIO_LED_WAN_AMBER	12
-#define WNR2200_GPIO_LED_LAN1_GREEN	13
-#define WNR2200_GPIO_LED_LAN2_GREEN	14
-#define WNR2200_GPIO_LED_LAN3_GREEN	15
-#define WNR2200_GPIO_LED_LAN4_GREEN	16
-#define WNR2200_GPIO_LED_PWR_AMBER	21
-#define WNR2200_GPIO_LED_PWR_GREEN	22
+//AR9287 GPIO LED
+#define WNR2200_GPIO_LED_WLAN			0
+#define WNR2200_GPIO_LED_PWR_AMBER		1
+#define WNR2200_GPIO_LED_PWR_GREEN		2
+#define WNR2200_GPIO_USB_5V			4
+//AR9287 GPIO BUTTON
+#define WNR2200_GPIO_BUTTON_WIFI			3
+#define WNR2200_GPIO_BUTTON_WPS			5
+#define WNR2200_GPIO_BUTTON_RESET		6
 
-#define WNR2200_GPIO_USB_POWER		24
+//AR7241
+#define WNR2200_GPIO_LED_WPS			7
+#define WNR2200_GPIO_LED_USB			8
 
-#define WNR2200_KEYS_POLL_INTERVAL	20 /* msecs */
-#define WNR2200_KEYS_DEBOUNCE_INTERVAL	(3 * WNR2200_KEYS_POLL_INTERVAL)
+#define WNR2200_GPIO_LED_LAN1_AMBER		6
+#define WNR2200_GPIO_LED_LAN2_AMBER		0
+#define WNR2200_GPIO_LED_LAN4_AMBER		1
+#define WNR2200_GPIO_LED_LAN3_AMBER		11
+#define WNR2200_GPIO_LED_WAN_AMBER		12
 
-#define WNR2200_MAC0_OFFSET		0
-#define WNR2200_MAC1_OFFSET		6
-#define WNR2200_PCIE_CALDATA_OFFSET	0x1000
+#define WNR2200_MAC0_OFFSET			0
+#define WNR2200_MAC1_OFFSET			6
+#define WNR2200_PCIE_CALDATA_OFFSET		0x1000
 
 static struct gpio_led wnr2200_leds_gpio[] __initdata = {
 	{
+		.name		= "netgear:amber:lan1",
+		.gpio		= WNR2200_GPIO_LED_LAN1_AMBER,
+		.active_low	= 1,
+	}, {
 		.name		= "netgear:amber:lan2",
 		.gpio		= WNR2200_GPIO_LED_LAN2_AMBER,
+		.active_low	= 1,
+	}, {
+		.name		= "netgear:amber:lan3",
+		.gpio		= WNR2200_GPIO_LED_LAN3_AMBER,
 		.active_low	= 1,
 	}, {
 		.name		= "netgear:amber:lan4",
@@ -60,44 +71,12 @@ static struct gpio_led wnr2200_leds_gpio[] __initdata = {
 		.gpio		= WNR2200_GPIO_LED_WPS,
 		.active_low	= 1,
 	}, {
-		.name		= "netgear:green:wan",
-		.gpio		= WNR2200_GPIO_LED_WAN_GREEN,
-		.active_low	= 1,
-	}, {
 		.name		= "netgear:green:usb",
 		.gpio		= WNR2200_GPIO_LED_USB,
 		.active_low	= 1,
 	}, {
-		.name		= "netgear:amber:lan3",
-		.gpio		= WNR2200_GPIO_LED_LAN3_AMBER,
-		.active_low	= 1,
-	}, {
 		.name		= "netgear:amber:wan",
 		.gpio		= WNR2200_GPIO_LED_WAN_AMBER,
-		.active_low	= 1,
-	}, {
-		.name		= "netgear:green:lan1",
-		.gpio		= WNR2200_GPIO_LED_LAN1_GREEN,
-		.active_low	= 1,
-	}, {
-		.name		= "netgear:green:lan2",
-		.gpio		= WNR2200_GPIO_LED_LAN2_GREEN,
-		.active_low	= 1,
-	}, {
-		.name		= "netgear:green:lan3",
-		.gpio		= WNR2200_GPIO_LED_LAN3_GREEN,
-		.active_low	= 1,
-	}, {
-		.name		= "netgear:green:lan4",
-		.gpio		= WNR2200_GPIO_LED_LAN4_GREEN,
-		.active_low	= 1,
-	}, {
-		.name		= "netgear:amber:power",
-		.gpio		= WNR2200_GPIO_LED_PWR_AMBER,
-		.active_low	= 1,
-	}, {
-		.name		= "netgear:green:power",
-		.gpio		= WNR2200_GPIO_LED_PWR_GREEN,
 		.active_low	= 1,
 	}
 };
@@ -105,6 +84,8 @@ static struct gpio_led wnr2200_leds_gpio[] __initdata = {
 static void __init wnr2200_setup(void)
 {
 	u8 *art = (u8 *) KSEG1ADDR(0x1fff0000);
+
+	ath79_gpio_function_setup(AR724X_GPIO_FUNC_JTAG_DISABLE, 0);
 
 	ath79_register_mdio(0, 0x0);
 
@@ -122,16 +103,18 @@ static void __init wnr2200_setup(void)
 
 	ath79_register_m25p80(NULL);
 	ap91_pci_init(art + WNR2200_PCIE_CALDATA_OFFSET, NULL);
-
+	ap9x_pci_setup_wmac_led_pin(0, WNR2200_GPIO_LED_WLAN);
+	
 	ath79_register_leds_gpio(-1, ARRAY_SIZE(wnr2200_leds_gpio),
 					wnr2200_leds_gpio);
 
 	/* enable power for the USB port */
-	gpio_request_one(WNR2200_GPIO_USB_POWER,
-			GPIOF_OUT_INIT_HIGH | GPIOF_EXPORT_DIR_FIXED,
-			"USB power");
+	ap9x_pci_setup_wmac_gpio(0,
+			BIT(WNR2200_GPIO_USB_5V) | BIT(WNR2200_GPIO_LED_PWR_AMBER) | BIT(WNR2200_GPIO_LED_PWR_GREEN),
+			BIT(WNR2200_GPIO_USB_5V) | BIT(WNR2200_GPIO_LED_PWR_AMBER));
 
 	ath79_register_usb();
 }
 
 MIPS_MACHINE(ATH79_MACH_WNR2200, "WNR2200", "NETGEAR WNR2200", wnr2200_setup);
+ 

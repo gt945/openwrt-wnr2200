@@ -5,4 +5,5 @@ if [ "$ACTION" = "pressed" -a "$BUTTON" = "wps" ]; then
 		[ -d "$dir" ] || continue
 		hostapd_cli -p "$dir" wps_pbc
 	done
+	sh /lib/functions/wpsled.sh
 fi
