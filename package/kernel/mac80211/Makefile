@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2007-2013 OpenWrt.org
+# Copyright (C) 2007-2014 OpenWrt.org
 #
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
@@ -11,7 +11,7 @@ include $(INCLUDE_DIR)/kernel.mk
 PKG_NAME:=mac80211
 
 PKG_VERSION:=2014-01-23.1
-PKG_RELEASE:=1
+PKG_RELEASE:=3
 PKG_SOURCE_URL:=http://mirror2.openwrt.org/sources
 PKG_BACKPORT_VERSION:=
 PKG_MD5SUM:=8db16edbdaf4abc2e9c2f3b6c86736a6
@@ -103,12 +103,12 @@ Generic IEEE 802.11 Networking Stack (mac80211)
 endef
 
 PKG_LINUX_FIRMWARE_NAME:=linux-firmware
-PKG_LINUX_FIRMWARE_VERSION:=7d0c7a8cfd78388d90cc784a185b19dcbdbce824
+PKG_LINUX_FIRMWARE_VERSION:=f8c22c692bdee57a20b092e647464ff6176df3ed
 PKG_LINUX_FIRMWARE_SOURCE:=$(PKG_LINUX_FIRMWARE_NAME)-$(PKG_LINUX_FIRMWARE_VERSION).tar.bz2
 PKG_LINUX_FIRMWARE_PROTO:=git
 PKG_LINUX_FIRMWARE_SOURCE_URL:=git://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git
 PKG_LINUX_FIRMWARE_SUBDIR:=$(PKG_LINUX_FIRMWARE_NAME)-$(PKG_LINUX_FIRMWARE_VERSION)
-PKG_LINUX_FIRMWARE_MIRROR_MD5SUM:=837a1a9456c1ec8b428cc0b2b08a331b
+PKG_LINUX_FIRMWARE_MIRROR_MD5SUM:=e219333f01835c6e556875a9e0deb3f9
 
 define Download/linux-firmware
   FILE:=$(PKG_LINUX_FIRMWARE_SOURCE)
@@ -122,7 +122,7 @@ endef
 $(eval $(call Download,linux-firmware))
 
 PKG_ATH10K_LINUX_FIRMWARE_NAME:=ath10k-firmware
-PKG_ATH10K_LINUX_FIRMWARE_VERSION:=d86e78e5c6be34329936c8bd73a212700437be2e
+PKG_ATH10K_LINUX_FIRMWARE_VERSION:=38eeda3ae6f90fde5546bdd48ee4ff3090f238c0
 PKG_ATH10K_LINUX_FIRMWARE_SOURCE:=$(PKG_ATH10K_LINUX_FIRMWARE_NAME)-$(PKG_ATH10K_LINUX_FIRMWARE_VERSION).tar.bz2
 PKG_ATH10K_LINUX_FIRMWARE_PROTO:=git
 PKG_ATH10K_LINUX_FIRMWARE_SOURCE_URL:=https://github.com/kvalo/ath10k-firmware.git
@@ -593,6 +593,19 @@ define KernelPackage/ath10k/description
 This module adds support for wireless adapters based on
 Atheros IEEE 802.11ac family of chipsets. For now only
 PCI is supported.
+endef
+
+define KernelPackage/ath10k/config
+  if PACKAGE_kmod-ath10k
+
+	config ATH10K_STA_FW
+		bool "Firmware optimized for STA operation"
+		default n
+		help
+		  Use the ath10k firmware optimized for wireless client instead
+		  of access point operation.
+
+  endif
 endef
 
 define KernelPackage/carl9170
@@ -1629,8 +1642,7 @@ define KernelPackage/wl18xx/install
 	$(INSTALL_DIR) $(1)/lib/firmware/ti-connectivity
 	$(INSTALL_DATA) \
 		$(PKG_BUILD_DIR)/$(PKG_LINUX_FIRMWARE_SUBDIR)/ti-connectivity/wl18xx-conf.bin \
-		$(PKG_BUILD_DIR)/$(PKG_LINUX_FIRMWARE_SUBDIR)/ti-connectivity/wl18xx-fw.bin \
-		$(PKG_BUILD_DIR)/$(PKG_LINUX_FIRMWARE_SUBDIR)/ti-connectivity/wl18xx-fw-2.bin \
+		$(PKG_BUILD_DIR)/$(PKG_LINUX_FIRMWARE_SUBDIR)/ti-connectivity/wl18xx-fw-3.bin \
 		$(1)/lib/firmware/ti-connectivity
 endef
 
@@ -1654,10 +1666,19 @@ endef
 
 define KernelPackage/ath10k/install
 	$(INSTALL_DIR) $(1)/lib/firmware/ath10k/QCA988X/hw2.0
+ifeq ($(CONFIG_ATH10K_STA_FW),y)
+	$(INSTALL_DATA) \
+		$(PKG_BUILD_DIR)/$(PKG_ATH10K_LINUX_FIRMWARE_SUBDIR)/ath10k/QCA988X/hw2.0/board.bin \
+		$(1)/lib/firmware/ath10k/QCA988X/hw2.0/
+	$(INSTALL_DATA) \
+		$(PKG_BUILD_DIR)/$(PKG_ATH10K_LINUX_FIRMWARE_SUBDIR)/main/firmware-2.bin_999.999.0.636 \
+		$(1)/lib/firmware/ath10k/QCA988X/hw2.0/firmware-2.bin
+else
 	$(INSTALL_DATA) \
 		$(PKG_BUILD_DIR)/$(PKG_ATH10K_LINUX_FIRMWARE_SUBDIR)/ath10k/QCA988X/hw2.0/board.bin \
 		$(PKG_BUILD_DIR)/$(PKG_ATH10K_LINUX_FIRMWARE_SUBDIR)/ath10k/QCA988X/hw2.0/firmware-2.bin \
 		$(1)/lib/firmware/ath10k/QCA988X/hw2.0/
+endif
 endef
 
 define KernelPackage/mwl8k/install

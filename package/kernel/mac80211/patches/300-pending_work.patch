@@ -1,3 +1,213 @@
+commit 584d297fd29fb39c76af25ae74ff9d5fe74c8a14
+Author: Helmut Schaa <helmut.schaa@googlemail.com>
+Date:   Wed Mar 12 10:37:55 2014 +0100
+
+    ath9k: Fix sequence number assignment for non-data frames
+    
+    Since commit 558ff225de80ac95b132d3a115ddadcd64498b4f (ath9k: fix
+    ps-poll responses under a-mpdu sessions) non-data frames would have
+    gotten a sequence number from a TIDs sequence counter instead of
+    using the global sequence counter.
+    
+    This can lead to instable connections.
+    
+    To fix this only select the correct TID if we are processing a
+    data frame. Furthermore, prevent non-data frames to get a sequence
+    number from a TID sequence counter by adding a check to
+    ath_tx_setup_buffer.
+    
+    Cc: Felix Fietkau <nbd@openwrt.org>
+    Signed-off-by: Helmut Schaa <helmut.schaa@googlemail.com>
+
+commit 3a0f984b1cdcd6a9f8c441635ef3b05d58547f4e
+Author: Felix Fietkau <nbd@openwrt.org>
+Date:   Tue Mar 11 14:03:32 2014 +0100
+
+    ath9k_hw: set ANI firstep as absolute values instead of relative
+    
+    On older chips, the INI value differ in similar ways as cycpwr_thr1, so
+    convert it to absolute values as well.
+    
+    Since the ANI algorithm is different here compared to the old
+    implementation (fewer steps, controlled at a different point in time),
+    it makes sense to use values similar to what would be applied for newer
+    chips, just without relying on INI defaults.
+    
+    Signed-off-by: Felix Fietkau <nbd@openwrt.org>
+
+commit 91d70d40400c569b49605b78fd7c43e9405694f4
+Author: Felix Fietkau <nbd@openwrt.org>
+Date:   Tue Mar 11 14:00:37 2014 +0100
+
+    ath9k_hw: set ANI cycpwr_thr1 as absolute values instead of relative
+    
+    The table was copied from the ANI implementation of AR9300. It assumes
+    that the INI values contain a baseline value that is usable as reference
+    from which to increase/decrease based on the noise immunity value.
+    
+    On older chips, the differences are bigger and especially AR5008/AR9001
+    are configured to much more sensitive values than what is useful.
+    
+    Improve ANI behavior by reverting to the absolute values used in the
+    previous implementation (expressed as a simple formula instead of the
+    old table).
+    
+    Signed-off-by: Felix Fietkau <nbd@openwrt.org>
+
+commit c977493766310a825f406836636ffd66e1447783
+Author: Felix Fietkau <nbd@openwrt.org>
+Date:   Mon Mar 10 19:52:56 2014 +0100
+
+    ath9k_hw: remove ANI function restrictions for AP mode
+    
+    The primary purpose of this piece of code was to selectively disable
+    OFDM weak signal detection. The checks for this are elsewhere, and an
+    earlier commit relaxed the restrictions for older chips, which are more
+    sensitive to interference.
+    
+    Signed-off-by: Felix Fietkau <nbd@openwrt.org>
+
+commit 8d804f1af11e4e058b1e8453327777d73a585cb8
+Author: Felix Fietkau <nbd@openwrt.org>
+Date:   Sun Mar 9 11:25:43 2014 +0100
+
+    ath9k: clean up and enhance ANI debugfs file
+    
+    Unify scnprintf calls and include the current OFDM/CCK immunity level.
+    
+    Signed-off-by: Felix Fietkau <nbd@openwrt.org>
+
+commit 22e298b5a3a8a49e33805d4e351965123dede35b
+Author: Felix Fietkau <nbd@openwrt.org>
+Date:   Sun Mar 9 10:58:47 2014 +0100
+
+    ath9k: fix ready time of the multicast buffer queue
+    
+    qi->tqi_readyTime is written directly to registers that expect
+    microseconds as unit instead of TU.
+    When setting the CABQ ready time, cur_conf->beacon_interval is in TU, so
+    convert it to microseconds before passing it to ath9k_hw.
+    
+    This should hopefully fix some Tx DMA issues with buffered multicast
+    frames in AP mode.
+    
+    Cc: stable@vger.kernel.org
+    Signed-off-by: Felix Fietkau <nbd@openwrt.org>
+
+commit fcb064fdd5a27bec8d24099bc0172468f34c97cb
+Author: Felix Fietkau <nbd@openwrt.org>
+Date:   Sun Mar 9 09:43:09 2014 +0100
+
+    ath9k_hw: fix unreachable code in baseband hang detection code
+    
+    The commit "ath9k: reduce baseband hang detection false positive rate"
+    added a delay in the loop checking the baseband state, however it was
+    unreachable due to previous 'continue' statements.
+    
+    Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+    Signed-off-by: Felix Fietkau <nbd@openwrt.org>
+
+commit 31959d8df39319e32c6d5ba9c135727be90cfad7
+Author: Michal Kazior <michal.kazior@tieto.com>
+Date:   Fri Mar 7 08:09:38 2014 +0100
+
+    mac80211: fix possible NULL dereference
+    
+    If chanctx is missing on a given vif then the band
+    is assumed to be 2GHz. However if hw doesn't
+    support 2GHz band then mac80211 ended up with a
+    NULL dereference.
+    
+    This fixes a splat:
+    
+    [ 4605.207223] BUG: unable to handle kernel NULL pointer dereference at 0000000000000018
+    [ 4605.210789] IP: [<ffffffffa07b5635>] ieee80211_parse_bitrates+0x65/0x110 [mac80211]
+    
+    The splat was preceeded by WARN_ON(!chanctx_conf)
+    in ieee80211_get_sdata_band().
+    
+    Signed-off-by: Michal Kazior <michal.kazior@tieto.com>
+
+commit 6c5a3ffa0a2d22c091a2717f427259bacf77ac5e
+Author: Michael Braun <michael-dev@fami-braun.de>
+Date:   Thu Mar 6 15:08:43 2014 +0100
+
+    mac80211: fix WPA with VLAN on AP side with ps-sta again
+    
+    commit de74a1d9032f4d37ea453ad2a647e1aff4cd2591
+      "mac80211: fix WPA with VLAN on AP side with ps-sta"
+    fixed an issue where queued multicast packets would
+    be sent out encrypted with the key of an other bss.
+    
+    commit "7cbf9d017dbb5e3276de7d527925d42d4c11e732"
+      "mac80211: fix oops on mesh PS broadcast forwarding"
+    essentially reverted it, because vif.type cannot be AP_VLAN
+    due to the check to vif.type in ieee80211_get_buffered_bc before.
+    
+    As the later commit intended to fix the MESH case, fix it
+    by checking for IFTYPE_AP instead of IFTYPE_AP_VLAN.
+    
+    Fixes: 7cbf9d017dbb
+    Cc: <stable@vger.kernel.org> # 3.10.x
+    Cc: <stable@vger.kernel.org> # 3.11.x
+    Cc: <stable@vger.kernel.org> # 3.12.x
+    Cc: <stable@vger.kernel.org> # 3.13.x
+    Cc: <linux-wireless@vger.kernel.org>
+    Cc: <projekt-wlan@fem.tu-ilmenau.de>
+    Signed-off-by: Michael Braun <michael-dev@fami-braun.de>
+
+commit 9d6ab9bdb9b368a6cf9519f0f92509b5b2c297ec
+Author: Johannes Berg <johannes.berg@intel.com>
+Date:   Mon Mar 3 14:19:08 2014 +0100
+
+    cfg80211: remove racy beacon_interval assignment
+    
+    In case of AP mode, the beacon interval is already reset to
+    zero inside cfg80211_stop_ap(), and in the other modes it
+    isn't relevant. Remove the assignment to remove a potential
+    race since the assignment isn't properly locked.
+    
+    Reported-by: Michal Kazior <michal.kazior@tieto.com>
+    Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+
+commit 1abdeca3c6fb9cf1f84f85e78ed8d1c33bd69db0
+Author: Felix Fietkau <nbd@openwrt.org>
+Date:   Fri Feb 28 18:52:56 2014 +0100
+
+    ath9k_hw: tweak noise immunity thresholds for older chipsets
+    
+    Older chipsets are more sensitive to high PHY error counts, and the
+    current noise immunity thresholds were based on tests run at QCA with
+    newer chipsets.
+    
+    This patch brings back the values from the old ANI implementation for
+    old chipsets, and it also disables weak signal detection on an earlier
+    noise immunity level, to improve overall radio stability on affected
+    devices.
+    
+    Signed-off-by: Felix Fietkau <nbd@openwrt.org>
+
+commit 431e506da5953adc3b65af25f4b90873d528c115
+Author: Felix Fietkau <nbd@openwrt.org>
+Date:   Fri Feb 28 18:44:13 2014 +0100
+
+    ath9k_hw: toggle weak signal detection in AP mode on older chipsets
+    
+    The commit 80b4205b "ath9k: Fix OFDM weak signal detection for AP mode"
+    prevented weak signal detection changes from taking effect in AP mode on
+    all chipsets, claiming it is "not allowed".
+    
+    The main reason for not disabling weak signal detection in AP mode is
+    that typically beacon RSSI is used to track whether it is needed to
+    boost range, and this is unavailable in AP mode for obvious reasons.
+    
+    The problem with not disabling weak signal detection is that older
+    chipsets are very sensitive to high PHY error counts. When faced with
+    heavy noise, this can lead to an excessive amount of "Failed to stop
+    TX DMA" errors in the field.
+    
+    Signed-off-by: Felix Fietkau <nbd@openwrt.org>
+
 commit 98d1a6c5b14688ed030e81b889f607be308e0df9
 Author: Felix Fietkau <nbd@openwrt.org>
 Date:   Mon Feb 24 22:20:32 2014 +0100
@@ -1096,7 +1306,7 @@ Date:   Thu Jan 23 20:06:34 2014 +0100
  
  	if (AR_SREV_9300(ah))
  		return !ath9k_hw_detect_mac_hang(ah);
-@@ -1542,9 +1542,13 @@ bool ath9k_hw_check_alive(struct ath_hw 
+@@ -1542,9 +1542,14 @@ bool ath9k_hw_check_alive(struct ath_hw 
  	if (AR_SREV_9285_12_OR_LATER(ah))
  		return true;
  
@@ -1106,20 +1316,12 @@ Date:   Thu Jan 23 20:06:34 2014 +0100
 +		if (reg != last_val)
 +			return true;
  
++		udelay(1);
 +		last_val = reg;
  		if ((reg & 0x7E7FFFEF) == 0x00702400)
  			continue;
  
-@@ -1556,6 +1560,8 @@ bool ath9k_hw_check_alive(struct ath_hw 
- 		default:
- 			return true;
- 		}
-+
-+		udelay(1);
- 	} while (count-- > 0);
- 
- 	return false;
-@@ -2051,9 +2057,8 @@ static bool ath9k_hw_set_power_awake(str
+@@ -2051,9 +2056,8 @@ static bool ath9k_hw_set_power_awake(str
  
  	REG_SET_BIT(ah, AR_RTC_FORCE_WAKE,
  		    AR_RTC_FORCE_WAKE_EN);
@@ -1449,7 +1651,17 @@ Date:   Thu Jan 23 20:06:34 2014 +0100
  
  	__sta_info_flush(sdata, true);
  	ieee80211_free_keys(sdata, true);
-@@ -2638,6 +2643,24 @@ static int ieee80211_start_roc_work(stru
+@@ -1988,6 +1993,9 @@ static int ieee80211_change_bss(struct w
+ 
+ 	band = ieee80211_get_sdata_band(sdata);
+ 
++	if (WARN_ON(!wiphy->bands[band]))
++		return -EINVAL;
++
+ 	if (params->use_cts_prot >= 0) {
+ 		sdata->vif.bss_conf.use_cts_prot = params->use_cts_prot;
+ 		changed |= BSS_CHANGED_ERP_CTS_PROT;
+@@ -2638,6 +2646,24 @@ static int ieee80211_start_roc_work(stru
  	INIT_DELAYED_WORK(&roc->work, ieee80211_sw_roc_work);
  	INIT_LIST_HEAD(&roc->dependents);
  
@@ -1474,7 +1686,7 @@ Date:   Thu Jan 23 20:06:34 2014 +0100
  	/* if there's one pending or we're scanning, queue this one */
  	if (!list_empty(&local->roc_list) ||
  	    local->scanning || local->radar_detect_enabled)
-@@ -2772,24 +2795,6 @@ static int ieee80211_start_roc_work(stru
+@@ -2772,24 +2798,6 @@ static int ieee80211_start_roc_work(stru
  	if (!queued)
  		list_add_tail(&roc->list, &local->roc_list);
  
@@ -1499,7 +1711,7 @@ Date:   Thu Jan 23 20:06:34 2014 +0100
  	return 0;
  }
  
-@@ -3004,8 +3009,10 @@ void ieee80211_csa_finalize_work(struct 
+@@ -3004,8 +3012,10 @@ void ieee80211_csa_finalize_work(struct 
  	if (!ieee80211_sdata_running(sdata))
  		goto unlock;
  
@@ -1511,7 +1723,7 @@ Date:   Thu Jan 23 20:06:34 2014 +0100
  	err = ieee80211_vif_change_channel(sdata, &changed);
  	mutex_unlock(&local->mtx);
  	if (WARN_ON(err < 0))
-@@ -3022,13 +3029,13 @@ void ieee80211_csa_finalize_work(struct 
+@@ -3022,13 +3032,13 @@ void ieee80211_csa_finalize_work(struct 
  	switch (sdata->vif.type) {
  	case NL80211_IFTYPE_AP:
  		err = ieee80211_assign_beacon(sdata, sdata->u.ap.next_beacon);
@@ -1528,7 +1740,7 @@ Date:   Thu Jan 23 20:06:34 2014 +0100
  		ieee80211_bss_info_change_notify(sdata, err);
  		break;
  	case NL80211_IFTYPE_ADHOC:
-@@ -3066,7 +3073,7 @@ int ieee80211_channel_switch(struct wiph
+@@ -3066,7 +3076,7 @@ int ieee80211_channel_switch(struct wiph
  	struct ieee80211_if_mesh __maybe_unused *ifmsh;
  	int err, num_chanctx;
  
@@ -1768,6 +1980,15 @@ Date:   Thu Jan 23 20:06:34 2014 +0100
  	return 0;
  }
  
+@@ -2900,7 +2912,7 @@ ieee80211_get_buffered_bc(struct ieee802
+ 				cpu_to_le16(IEEE80211_FCTL_MOREDATA);
+ 		}
+ 
+-		if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN)
++		if (sdata->vif.type == NL80211_IFTYPE_AP)
+ 			sdata = IEEE80211_DEV_TO_SUB_IF(skb->dev);
+ 		if (!ieee80211_tx_prepare(sdata, &tx, skb))
+ 			break;
 --- a/net/mac80211/wpa.c
 +++ b/net/mac80211/wpa.c
 @@ -499,7 +499,7 @@ ieee80211_crypto_ccmp_decrypt(struct iee
@@ -1819,7 +2040,16 @@ Date:   Thu Jan 23 20:06:34 2014 +0100
  	/*
  	 * There are major locking problems in nl80211/mac80211 for CSA,
  	 * disable for all drivers until this has been reworked.
-@@ -875,8 +875,11 @@ static int cfg80211_netdev_notifier_call
+@@ -795,8 +795,6 @@ void cfg80211_leave(struct cfg80211_regi
+ 	default:
+ 		break;
+ 	}
+-
+-	wdev->beacon_interval = 0;
+ }
+ 
+ static int cfg80211_netdev_notifier_call(struct notifier_block *nb,
+@@ -875,8 +873,11 @@ static int cfg80211_netdev_notifier_call
  		break;
  	case NETDEV_DOWN:
  		cfg80211_update_iface_num(rdev, wdev->iftype, -1);
@@ -3152,11 +3382,29 @@ Date:   Thu Jan 23 20:06:34 2014 +0100
  		buffered = ath_tid_has_buffered(tid);
  
  		tid->sched = false;
+@@ -1696,7 +1698,7 @@ int ath_cabq_update(struct ath_softc *sc
+ 
+ 	ath9k_hw_get_txq_props(sc->sc_ah, qnum, &qi);
+ 
+-	qi.tqi_readyTime = (cur_conf->beacon_interval *
++	qi.tqi_readyTime = (TU_TO_USEC(cur_conf->beacon_interval) *
+ 			    ATH_CABQ_READY_TIME) / 100;
+ 	ath_txq_update(sc, qnum, &qi);
+ 
+@@ -2061,7 +2063,7 @@ static struct ath_buf *ath_tx_setup_buff
+ 
+ 	ATH_TXBUF_RESET(bf);
+ 
+-	if (tid) {
++	if (tid && ieee80211_is_data_present(hdr->frame_control)) {
+ 		fragno = le16_to_cpu(hdr->seq_ctrl) & IEEE80211_SCTL_FRAG;
+ 		seqno = tid->seq_next;
+ 		hdr->seq_ctrl = cpu_to_le16(tid->seq_next << IEEE80211_SEQ_SEQ_SHIFT);
 @@ -2184,14 +2186,15 @@ int ath_tx_start(struct ieee80211_hw *hw
  		txq->stopped = true;
  	}
  
-+	if (txctl->an)
++	if (txctl->an && ieee80211_is_data_present(hdr->frame_control))
 +		tid = ath_get_skb_tid(sc, txctl->an, skb);
 +
  	if (info->flags & IEEE80211_TX_CTL_PS_RESPONSE) {
@@ -3417,7 +3665,79 @@ Date:   Thu Jan 23 20:06:34 2014 +0100
  		schedule_delayed_work(&reg_timeout, msecs_to_jiffies(3142));
 --- a/drivers/net/wireless/ath/ath9k/debug.c
 +++ b/drivers/net/wireless/ath/ath9k/debug.c
-@@ -866,6 +866,12 @@ static ssize_t read_file_reset(struct fi
+@@ -138,43 +138,41 @@ static ssize_t read_file_ani(struct file
+ 	unsigned int len = 0, size = 1024;
+ 	ssize_t retval = 0;
+ 	char *buf;
++	int i;
++	struct {
++		const char *name;
++		unsigned int val;
++	} ani_info[] = {
++		{ "ANI RESET", ah->stats.ast_ani_reset },
++		{ "OFDM LEVEL", ah->ani.ofdmNoiseImmunityLevel },
++		{ "CCK LEVEL", ah->ani.cckNoiseImmunityLevel },
++		{ "SPUR UP", ah->stats.ast_ani_spurup },
++		{ "SPUR DOWN", ah->stats.ast_ani_spurup },
++		{ "OFDM WS-DET ON", ah->stats.ast_ani_ofdmon },
++		{ "OFDM WS-DET OFF", ah->stats.ast_ani_ofdmoff },
++		{ "MRC-CCK ON", ah->stats.ast_ani_ccklow },
++		{ "MRC-CCK OFF", ah->stats.ast_ani_cckhigh },
++		{ "FIR-STEP UP", ah->stats.ast_ani_stepup },
++		{ "FIR-STEP DOWN", ah->stats.ast_ani_stepdown },
++		{ "INV LISTENTIME", ah->stats.ast_ani_lneg_or_lzero },
++		{ "OFDM ERRORS", ah->stats.ast_ani_ofdmerrs },
++		{ "CCK ERRORS", ah->stats.ast_ani_cckerrs },
++	};
+ 
+ 	buf = kzalloc(size, GFP_KERNEL);
+ 	if (buf == NULL)
+ 		return -ENOMEM;
+ 
+-	if (common->disable_ani) {
+-		len += scnprintf(buf + len, size - len, "%s: %s\n",
+-				 "ANI", "DISABLED");
++	len += scnprintf(buf + len, size - len, "%15s: %s\n", "ANI",
++			 common->disable_ani ? "DISABLED" : "ENABLED");
++
++	if (common->disable_ani)
+ 		goto exit;
+-	}
+ 
+-	len += scnprintf(buf + len, size - len, "%15s: %s\n",
+-			 "ANI", "ENABLED");
+-	len += scnprintf(buf + len, size - len, "%15s: %u\n",
+-			 "ANI RESET", ah->stats.ast_ani_reset);
+-	len += scnprintf(buf + len, size - len, "%15s: %u\n",
+-			 "SPUR UP", ah->stats.ast_ani_spurup);
+-	len += scnprintf(buf + len, size - len, "%15s: %u\n",
+-			 "SPUR DOWN", ah->stats.ast_ani_spurup);
+-	len += scnprintf(buf + len, size - len, "%15s: %u\n",
+-			 "OFDM WS-DET ON", ah->stats.ast_ani_ofdmon);
+-	len += scnprintf(buf + len, size - len, "%15s: %u\n",
+-			 "OFDM WS-DET OFF", ah->stats.ast_ani_ofdmoff);
+-	len += scnprintf(buf + len, size - len, "%15s: %u\n",
+-			 "MRC-CCK ON", ah->stats.ast_ani_ccklow);
+-	len += scnprintf(buf + len, size - len, "%15s: %u\n",
+-			 "MRC-CCK OFF", ah->stats.ast_ani_cckhigh);
+-	len += scnprintf(buf + len, size - len, "%15s: %u\n",
+-			 "FIR-STEP UP", ah->stats.ast_ani_stepup);
+-	len += scnprintf(buf + len, size - len, "%15s: %u\n",
+-			 "FIR-STEP DOWN", ah->stats.ast_ani_stepdown);
+-	len += scnprintf(buf + len, size - len, "%15s: %u\n",
+-			 "INV LISTENTIME", ah->stats.ast_ani_lneg_or_lzero);
+-	len += scnprintf(buf + len, size - len, "%15s: %u\n",
+-			 "OFDM ERRORS", ah->stats.ast_ani_ofdmerrs);
+-	len += scnprintf(buf + len, size - len, "%15s: %u\n",
+-			 "CCK ERRORS", ah->stats.ast_ani_cckerrs);
++	for (i = 0; i < ARRAY_SIZE(ani_info); i++)
++		len += scnprintf(buf + len, size - len, "%15s: %u\n",
++				 ani_info[i].name, ani_info[i].val);
++
+ exit:
+ 	if (len > size)
+ 		len = size;
+@@ -866,6 +864,12 @@ static ssize_t read_file_reset(struct fi
  			 "%17s: %2d\n", "PLL RX Hang",
  			 sc->debug.stats.reset[RESET_TYPE_PLL_HANG]);
  	len += scnprintf(buf + len, sizeof(buf) - len,
@@ -3591,3 +3911,232 @@ Date:   Thu Jan 23 20:06:34 2014 +0100
  }
  
  static void ath9k_rx_skb_postprocess(struct ath_common *common,
+--- a/drivers/net/wireless/ath/ath9k/ani.c
++++ b/drivers/net/wireless/ath/ath9k/ani.c
+@@ -176,16 +176,26 @@ static void ath9k_hw_set_ofdm_nil(struct
+ 	if (ah->opmode == NL80211_IFTYPE_STATION &&
+ 	    BEACON_RSSI(ah) <= ATH9K_ANI_RSSI_THR_HIGH)
+ 		weak_sig = true;
+-
+ 	/*
+-	 * OFDM Weak signal detection is always enabled for AP mode.
++	 * Newer chipsets are better at dealing with high PHY error counts -
++	 * keep weak signal detection enabled when no RSSI threshold is
++	 * available to determine if it is needed (mode != STA)
+ 	 */
+-	if (ah->opmode != NL80211_IFTYPE_AP &&
+-	    aniState->ofdmWeakSigDetect != weak_sig) {
+-		ath9k_hw_ani_control(ah,
+-				     ATH9K_ANI_OFDM_WEAK_SIGNAL_DETECTION,
+-				     entry_ofdm->ofdm_weak_signal_on);
+-	}
++	else if (AR_SREV_9300_20_OR_LATER(ah) &&
++		 ah->opmode != NL80211_IFTYPE_STATION)
++		weak_sig = true;
++
++	/* Older chipsets are more sensitive to high PHY error counts */
++	else if (!AR_SREV_9300_20_OR_LATER(ah) &&
++		 aniState->ofdmNoiseImmunityLevel >= 8)
++		weak_sig = false;
++
++	if (aniState->ofdmWeakSigDetect != weak_sig)
++		ath9k_hw_ani_control(ah, ATH9K_ANI_OFDM_WEAK_SIGNAL_DETECTION,
++				     weak_sig);
++
++	if (!AR_SREV_9300_20_OR_LATER(ah))
++		return;
+ 
+ 	if (aniState->ofdmNoiseImmunityLevel >= ATH9K_ANI_OFDM_DEF_LEVEL) {
+ 		ah->config.ofdm_trig_high = ATH9K_ANI_OFDM_TRIG_HIGH;
+@@ -308,17 +318,6 @@ void ath9k_ani_reset(struct ath_hw *ah, 
+ 	BUG_ON(aniState == NULL);
+ 	ah->stats.ast_ani_reset++;
+ 
+-	/* only allow a subset of functions in AP mode */
+-	if (ah->opmode == NL80211_IFTYPE_AP) {
+-		if (IS_CHAN_2GHZ(chan)) {
+-			ah->ani_function = (ATH9K_ANI_SPUR_IMMUNITY_LEVEL |
+-					    ATH9K_ANI_FIRSTEP_LEVEL);
+-			if (AR_SREV_9300_20_OR_LATER(ah))
+-				ah->ani_function |= ATH9K_ANI_MRC_CCK;
+-		} else
+-			ah->ani_function = 0;
+-	}
+-
+ 	ofdm_nil = max_t(int, ATH9K_ANI_OFDM_DEF_LEVEL,
+ 			 aniState->ofdmNoiseImmunityLevel);
+ 	cck_nil = max_t(int, ATH9K_ANI_CCK_DEF_LEVEL,
+@@ -483,10 +482,17 @@ void ath9k_hw_ani_init(struct ath_hw *ah
+ 
+ 	ath_dbg(common, ANI, "Initialize ANI\n");
+ 
+-	ah->config.ofdm_trig_high = ATH9K_ANI_OFDM_TRIG_HIGH;
+-	ah->config.ofdm_trig_low = ATH9K_ANI_OFDM_TRIG_LOW;
+-	ah->config.cck_trig_high = ATH9K_ANI_CCK_TRIG_HIGH;
+-	ah->config.cck_trig_low = ATH9K_ANI_CCK_TRIG_LOW;
++	if (AR_SREV_9300_20_OR_LATER(ah)) {
++		ah->config.ofdm_trig_high = ATH9K_ANI_OFDM_TRIG_HIGH;
++		ah->config.ofdm_trig_low = ATH9K_ANI_OFDM_TRIG_LOW;
++		ah->config.cck_trig_high = ATH9K_ANI_CCK_TRIG_HIGH;
++		ah->config.cck_trig_low = ATH9K_ANI_CCK_TRIG_LOW;
++	} else {
++		ah->config.ofdm_trig_high = ATH9K_ANI_OFDM_TRIG_HIGH_OLD;
++		ah->config.ofdm_trig_low = ATH9K_ANI_OFDM_TRIG_LOW_OLD;
++		ah->config.cck_trig_high = ATH9K_ANI_CCK_TRIG_HIGH_OLD;
++		ah->config.cck_trig_low = ATH9K_ANI_CCK_TRIG_LOW_OLD;
++	}
+ 
+ 	ani->spurImmunityLevel = ATH9K_ANI_SPUR_IMMUNE_LVL;
+ 	ani->firstepLevel = ATH9K_ANI_FIRSTEP_LVL;
+--- a/drivers/net/wireless/ath/ath9k/ani.h
++++ b/drivers/net/wireless/ath/ath9k/ani.h
+@@ -22,12 +22,16 @@
+ /* units are errors per second */
+ #define ATH9K_ANI_OFDM_TRIG_HIGH           3500
+ #define ATH9K_ANI_OFDM_TRIG_HIGH_BELOW_INI 1000
++#define ATH9K_ANI_OFDM_TRIG_HIGH_OLD       500
+ 
+ #define ATH9K_ANI_OFDM_TRIG_LOW           400
+ #define ATH9K_ANI_OFDM_TRIG_LOW_ABOVE_INI 900
++#define ATH9K_ANI_OFDM_TRIG_LOW_OLD       200
+ 
+ #define ATH9K_ANI_CCK_TRIG_HIGH           600
++#define ATH9K_ANI_CCK_TRIG_HIGH_OLD       200
+ #define ATH9K_ANI_CCK_TRIG_LOW            300
++#define ATH9K_ANI_CCK_TRIG_LOW_OLD        100
+ 
+ #define ATH9K_ANI_SPUR_IMMUNE_LVL         3
+ #define ATH9K_ANI_FIRSTEP_LVL             2
+--- a/drivers/net/wireless/ath/ath9k/ar5008_phy.c
++++ b/drivers/net/wireless/ath/ath9k/ar5008_phy.c
+@@ -26,10 +26,6 @@ static const int firstep_table[] =
+ /* level:  0   1   2   3   4   5   6   7   8  */
+ 	{ -4, -2,  0,  2,  4,  6,  8, 10, 12 }; /* lvl 0-8, default 2 */
+ 
+-static const int cycpwrThr1_table[] =
+-/* level:  0   1   2   3   4   5   6   7   8  */
+-	{ -6, -4, -2,  0,  2,  4,  6,  8 };     /* lvl 0-7, default 3 */
+-
+ /*
+  * register values to turn OFDM weak signal detection OFF
+  */
+@@ -921,7 +917,7 @@ static bool ar5008_hw_ani_control_new(st
+ 	struct ath_common *common = ath9k_hw_common(ah);
+ 	struct ath9k_channel *chan = ah->curchan;
+ 	struct ar5416AniState *aniState = &ah->ani;
+-	s32 value, value2;
++	s32 value;
+ 
+ 	switch (cmd & ah->ani_function) {
+ 	case ATH9K_ANI_OFDM_WEAK_SIGNAL_DETECTION:{
+@@ -1008,42 +1004,11 @@ static bool ar5008_hw_ani_control_new(st
+ 	case ATH9K_ANI_FIRSTEP_LEVEL:{
+ 		u32 level = param;
+ 
+-		if (level >= ARRAY_SIZE(firstep_table)) {
+-			ath_dbg(common, ANI,
+-				"ATH9K_ANI_FIRSTEP_LEVEL: level out of range (%u > %zu)\n",
+-				level, ARRAY_SIZE(firstep_table));
+-			return false;
+-		}
+-
+-		/*
+-		 * make register setting relative to default
+-		 * from INI file & cap value
+-		 */
+-		value = firstep_table[level] -
+-			firstep_table[ATH9K_ANI_FIRSTEP_LVL] +
+-			aniState->iniDef.firstep;
+-		if (value < ATH9K_SIG_FIRSTEP_SETTING_MIN)
+-			value = ATH9K_SIG_FIRSTEP_SETTING_MIN;
+-		if (value > ATH9K_SIG_FIRSTEP_SETTING_MAX)
+-			value = ATH9K_SIG_FIRSTEP_SETTING_MAX;
++		value = level * 2;
+ 		REG_RMW_FIELD(ah, AR_PHY_FIND_SIG,
+-			      AR_PHY_FIND_SIG_FIRSTEP,
+-			      value);
+-		/*
+-		 * we need to set first step low register too
+-		 * make register setting relative to default
+-		 * from INI file & cap value
+-		 */
+-		value2 = firstep_table[level] -
+-			 firstep_table[ATH9K_ANI_FIRSTEP_LVL] +
+-			 aniState->iniDef.firstepLow;
+-		if (value2 < ATH9K_SIG_FIRSTEP_SETTING_MIN)
+-			value2 = ATH9K_SIG_FIRSTEP_SETTING_MIN;
+-		if (value2 > ATH9K_SIG_FIRSTEP_SETTING_MAX)
+-			value2 = ATH9K_SIG_FIRSTEP_SETTING_MAX;
+-
++			      AR_PHY_FIND_SIG_FIRSTEP, value);
+ 		REG_RMW_FIELD(ah, AR_PHY_FIND_SIG_LOW,
+-			      AR_PHY_FIND_SIG_FIRSTEP_LOW, value2);
++			      AR_PHY_FIND_SIG_FIRSTEP_LOW, value);
+ 
+ 		if (level != aniState->firstepLevel) {
+ 			ath_dbg(common, ANI,
+@@ -1060,7 +1025,7 @@ static bool ar5008_hw_ani_control_new(st
+ 				aniState->firstepLevel,
+ 				level,
+ 				ATH9K_ANI_FIRSTEP_LVL,
+-				value2,
++				value,
+ 				aniState->iniDef.firstepLow);
+ 			if (level > aniState->firstepLevel)
+ 				ah->stats.ast_ani_stepup++;
+@@ -1073,41 +1038,13 @@ static bool ar5008_hw_ani_control_new(st
+ 	case ATH9K_ANI_SPUR_IMMUNITY_LEVEL:{
+ 		u32 level = param;
+ 
+-		if (level >= ARRAY_SIZE(cycpwrThr1_table)) {
+-			ath_dbg(common, ANI,
+-				"ATH9K_ANI_SPUR_IMMUNITY_LEVEL: level out of range (%u > %zu)\n",
+-				level, ARRAY_SIZE(cycpwrThr1_table));
+-			return false;
+-		}
+-		/*
+-		 * make register setting relative to default
+-		 * from INI file & cap value
+-		 */
+-		value = cycpwrThr1_table[level] -
+-			cycpwrThr1_table[ATH9K_ANI_SPUR_IMMUNE_LVL] +
+-			aniState->iniDef.cycpwrThr1;
+-		if (value < ATH9K_SIG_SPUR_IMM_SETTING_MIN)
+-			value = ATH9K_SIG_SPUR_IMM_SETTING_MIN;
+-		if (value > ATH9K_SIG_SPUR_IMM_SETTING_MAX)
+-			value = ATH9K_SIG_SPUR_IMM_SETTING_MAX;
++		value = (level + 1) * 2;
+ 		REG_RMW_FIELD(ah, AR_PHY_TIMING5,
+-			      AR_PHY_TIMING5_CYCPWR_THR1,
+-			      value);
++			      AR_PHY_TIMING5_CYCPWR_THR1, value);
+ 
+-		/*
+-		 * set AR_PHY_EXT_CCA for extension channel
+-		 * make register setting relative to default
+-		 * from INI file & cap value
+-		 */
+-		value2 = cycpwrThr1_table[level] -
+-			 cycpwrThr1_table[ATH9K_ANI_SPUR_IMMUNE_LVL] +
+-			 aniState->iniDef.cycpwrThr1Ext;
+-		if (value2 < ATH9K_SIG_SPUR_IMM_SETTING_MIN)
+-			value2 = ATH9K_SIG_SPUR_IMM_SETTING_MIN;
+-		if (value2 > ATH9K_SIG_SPUR_IMM_SETTING_MAX)
+-			value2 = ATH9K_SIG_SPUR_IMM_SETTING_MAX;
+-		REG_RMW_FIELD(ah, AR_PHY_EXT_CCA,
+-			      AR_PHY_EXT_TIMING5_CYCPWR_THR1, value2);
++		if (IS_CHAN_HT40(ah->curchan))
++			REG_RMW_FIELD(ah, AR_PHY_EXT_CCA,
++				      AR_PHY_EXT_TIMING5_CYCPWR_THR1, value);
+ 
+ 		if (level != aniState->spurImmunityLevel) {
+ 			ath_dbg(common, ANI,
+@@ -1124,7 +1061,7 @@ static bool ar5008_hw_ani_control_new(st
+ 				aniState->spurImmunityLevel,
+ 				level,
+ 				ATH9K_ANI_SPUR_IMMUNE_LVL,
+-				value2,
++				value,
+ 				aniState->iniDef.cycpwrThr1Ext);
+ 			if (level > aniState->spurImmunityLevel)
+ 				ah->stats.ast_ani_spurup++;
