@@ -6,12 +6,13 @@
 #
 
 # boards missing since devicetree update
-#EASY50712 ARV3527P BTHOMEHUBV2B BTHOMEHUBV2BOPENRG
+#EASY50712 ARV3527P
 
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/image.mk
 
 JFFS2_BLOCKSIZE = 64k 128k 256k
+NAND_BLOCKSIZE = 512:16k
 
 LOADER_MAKE := $(NO_TRACE_MAKE) -C lzma-loader KDIR=$(KDIR)
 
@@ -54,10 +55,10 @@ define TPLinkImageLzma
 endef
 
 define MkImageEVA
-	lzma2eva 0x80002000 0x80002000 $(KDIR)/vmlinux-$(1).lzma $(KDIR)/$(1).eva.prealign
-	dd if=$(KDIR)/$(1).eva.prealign of=$(KDIR)/$(1).eva.align.64k bs=64k conv=sync
-	dd if=$(KDIR)/$(1).eva.prealign of=$(KDIR)/$(1).eva.align.128k bs=128k conv=sync
-	cat ./eva.dummy.squashfs >> $(KDIR)/$(1).eva.align.64k
+	lzma2eva 0x80002000 0x80002000 $(KDIR)/vmlinux$(2)-$(1).lzma $(KDIR)/$(1)$(2).eva.prealign
+	dd if=$(KDIR)/$(1)$(2).eva.prealign of=$(KDIR)/$(1)$(2).eva.align.64k bs=64k conv=sync
+	dd if=$(KDIR)/$(1)$(2).eva.prealign of=$(KDIR)/$(1)$(2).eva.align.128k bs=128k conv=sync
+	cat ./eva.dummy.squashfs >> $(KDIR)/$(1)$(2).eva.align.64k
 endef
 
 define CompressGzip
@@ -93,6 +94,21 @@ define Image/BuildEVA/squashfs
 	$(call prepare_generic_squashfs,$(BIN_DIR)/$(IMG_PREFIX)-$(2)-$(1).image.eva)
 endef
 
+define Image/BuildEVA/ubifs
+
+ifneq ($($(PROFILE)_UBIFS_OPTS),)
+	$(CP) $(KDIR)/root.ubifs $(BIN_DIR)/$(IMG_PREFIX)-$(PROFILE)-rootfs.ubifs
+endif
+endef
+
+define Image/BuildEVA/ubi
+
+ifneq ($($(PROFILE)_UBI_OPTS),)
+	$(CP) $(KDIR)/root.ubi $(BIN_DIR)/$(IMG_PREFIX)-$(PROFILE)-rootfs.ubi
+	$(CP) $(KDIR)/root-overlay.ubi $(BIN_DIR)/$(IMG_PREFIX)-$(PROFILE)-rootfs-overlay.ubi
+endif
+endef
+
 define Image/BuildLoader/squashfs
 	dd if=$(KDIR)/loader-$(2).bin of=$(KDIR)/loader-$(2).bin.padded bs=1536k conv=sync
 	cat $(KDIR)/loader-$(2).bin.padded $(KDIR)/root.$(1) > $(BIN_DIR)/$(IMG_PREFIX)-$(2)-$(1).image
@@ -115,6 +131,13 @@ endef
 
 define Image/Build/jffs2-256k
 	dd if=$(KDIR)/uImage-$(2) of=$(KDIR)/uImage-$(2)-$(1) bs=256k conv=sync
+	cat $(KDIR)/uImage-$(2)-$(1) $(KDIR)/root.$(1) > $(BIN_DIR)/$(IMG_PREFIX)-$(2)-$(1).image
+endef
+
+define Image/Build/jffs2-nand-512-16k
+	dd if=$(KDIR)/uImage-$(2) of=$(KDIR)/uImage-$(2)-$(1) bs=16k conv=sync
+	$(CP) $(KDIR)/uImage-$(2)-$(1) $(BIN_DIR)/uImage-$(2)-$(1)
+	$(CP) $(KDIR)/root.$(1) $(BIN_DIR)/root-$(2)-$(1)
 	cat $(KDIR)/uImage-$(2)-$(1) $(KDIR)/root.$(1) > $(BIN_DIR)/$(IMG_PREFIX)-$(2)-$(1).image
 endef
 
@@ -197,6 +220,12 @@ define Image/BuildKernelEVA/Template
 	$(call MkImageEVA,$(1))
 	$(CP) $(KDIR)/$(1).eva.align.64k $(BIN_DIR)/$(IMG_PREFIX)-$(1).eva.align.64k
 	$(CP) $(KDIR)/$(1).eva.align.128k $(BIN_DIR)/$(IMG_PREFIX)-$(1).eva.align.128k
+ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)
+	$(call PatchKernelLzma,$(1),-initramfs)
+	$(call MkImageEVA,$(1),-initramfs)
+	$(CP) $(KDIR)/$(1)-initramfs.eva.align.64k $(BIN_DIR)/$(IMG_PREFIX)-$(1)-initramfs.eva.align.64k
+	$(CP) $(KDIR)/$(1)-initramfs.eva.align.128k $(BIN_DIR)/$(IMG_PREFIX)-$(1)-initramfs.eva.align.128k
+endif
 endef
 
 define Image/BuildKernelGzip/Template
@@ -233,6 +262,9 @@ endif
 ifeq ($(CONFIG_TARGET_lantiq_xway),y)
 
 # Danube
+Image/BuildKernel/Profile/BTHOMEHUBV2B=$(call Image/BuildKernel/Template,BTHOMEHUBV2B)
+Image/Build/Profile/BTHOMEHUBV2B=$(call Image/Build/$(1),$(1),BTHOMEHUBV2B)
+
 Image/BuildKernel/Profile/EASY50712=$(call Image/BuildKernel/Template,EASY50712)
 Image/Build/Profile/EASY50712=$(call Image/Build/$(1),$(1),EASY50712)
 
@@ -307,12 +339,6 @@ Image/Build/Profile/H201L=$(call Image/Build/$(1),$(1),H201L)
 Image/BuildKernel/Profile/P2601HNFX=$(call Image/BuildKernel/Template,P2601HNFX)
 Image/Build/Profile/P2601HNFX=$(call Image/Build/$(1),$(1),P2601HNFX)
 
-Image/BuildKernel/Profile/ARV7519RWV11=$(call Image/BuildKernel/Template,ARV7519RWV11,$(1))
-Image/Build/Profile/ARV7519RWV11=$(call Image/Build/$(1), $(1),ARV7519RWV11)
-
-Image/BuildKernel/Profile/ARV7519RWV12=$(call Image/BuildKernel/Template,ARV7519RWV12,$(1))
-Image/Build/Profile/ARV7519RWV12=$(call Image/Build/$(1), $(1),ARV7519RWV12)
-
 endif
 
 
@@ -322,6 +348,12 @@ ifeq ($(CONFIG_TARGET_lantiq_xrx200),y)
 Image/BuildKernel/Profile/P2812HNUFX=$(call Image/BuildKernel/Template,P2812HNUFX)
 Image/InstallKernel/Template/P2812HNUFX=$(call Image/InstallKernel/Template,P2812HNUFX)
 Image/Build/Profile/P2812HNUFX=$(call Image/Build/$(1),$(1),P2812HNUFX)
+
+Image/BuildKernel/Profile/ARV7519RWV11=$(call Image/BuildKernel/Template,ARV7519RWV11,$(1))
+Image/Build/Profile/ARV7519RWV11=$(call Image/Build/$(1),$(1),ARV7519RWV11)
+
+Image/BuildKernel/Profile/ARV7519RWV12=$(call Image/BuildKernel/Template,ARV7519RWV12,$(1))
+Image/Build/Profile/ARV7519RWV12=$(call Image/Build/$(1),$(1),ARV7519RWV12)
 
 Image/BuildKernel/Profile/EASY80920NAND=$(call Image/BuildKernel/Template,EASY80920NAND)
 Image/Build/Profile/EASY80920NAND=$(call Image/Build/$(1),$(1),EASY80920NAND)
@@ -334,6 +366,9 @@ Image/Build/Profile/FRITZ3370=$(call Image/BuildEVA/$(1),$(1),FRITZ3370)
 
 Image/BuildKernel/Profile/VG3503J=$(call Image/BuildKernelLoader/Template,VG3503J)
 Image/Build/Profile/VG3503J=$(call Image/BuildLoader/$(1),$(1),VG3503J)
+
+Image/BuildKernel/Profile/VG3503J_V2=$(call Image/BuildKernelLoader/Template,VG3503J_V2)
+Image/Build/Profile/VG3503J_V2=$(call Image/BuildLoader/$(1),$(1),VG3503J_V2)
 
 Image/BuildKernel/Profile/TDW8970=$(call Image/BuildKernelTPLink/Template,TDW8970,TD-W8970v1,$(1))
 Image/Build/Profile/TDW8970=$(call Image/BuildTPLink/$(1),$(1),TDW8970,TD-W8970v1)
