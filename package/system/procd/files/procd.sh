@@ -128,13 +128,49 @@ _procd_set_param() {
 		env|data|limits)
 			_procd_add_table "$type" "$@"
 		;;
-		command|netdev|file|respawn)
+		command|netdev|file|respawn|watch)
 			_procd_add_array "$type" "$@"
+		;;
+		error)
+			json_add_array "$type"
+			json_add_string "" "$@"
+			json_close_array
 		;;
 		nice)
 			json_add_int "$type" "$1"
 		;;
 	esac
+}
+
+_procd_add_interface_trigger() {
+	json_add_array
+	_procd_add_array_data "$1"
+	shift
+
+	json_add_array
+	_procd_add_array_data "if"
+
+	json_add_array
+	_procd_add_array_data "eq" "interface" "$1"
+	shift
+	json_close_array
+
+	json_add_array
+	_procd_add_array_data "run_script" "$@"
+	json_close_array
+
+	json_close_array
+
+	json_close_array
+}
+
+_procd_add_reload_interface_trigger() {
+	local script=$(readlink "$initscript")
+	local name=$(basename ${script:-$initscript})
+
+	_procd_open_trigger
+	_procd_add_interface_trigger "interface.*" $1 /etc/init.d/$name reload
+	_procd_close_trigger
 }
 
 _procd_add_config_trigger() {
@@ -162,9 +198,12 @@ _procd_add_config_trigger() {
 _procd_add_reload_trigger() {
 	local script=$(readlink "$initscript")
 	local name=$(basename ${script:-$initscript})
+	local file
 
 	_procd_open_trigger
-	_procd_add_config_trigger "config.change" $1 /etc/init.d/$name reload
+	for file in "$@"; do
+		_procd_add_config_trigger "config.change" "$file" /etc/init.d/$name reload
+	done
 	_procd_close_trigger
 }
 
@@ -176,14 +215,22 @@ _procd_add_validation() {
 
 _procd_append_param() {
 	local type="$1"; shift
+	local _json_no_warning=1
 
 	json_select "$type"
+	[ $? = 0 ] || {
+		_procd_set_param "$type" "$@"
+		return
+	}
 	case "$type" in
 		env|data|limits)
 			_procd_add_table_data "$@"
 		;;
-		command|netdev|file|respawn)
+		command|netdev|file|respawn|watch)
 			_procd_add_array_data "$@"
+		;;
+		error)
+			json_add_string "" "$@"
 		;;
 	esac
 	json_select ..
@@ -219,16 +266,16 @@ _procd_kill() {
 
 uci_validate_section()
 {
-	local package="$1"
-	local type="$2"
-	local name="$3"
-	local error
+	local _package="$1"
+	local _type="$2"
+	local _name="$3"
+	local _error
 	shift; shift; shift
-	local result=`/sbin/validate_data "$package" "$type" "$name" "$@" 2> /dev/null`
-	error=$?
-	eval "$result"
-	[ "$error" = "0" ] || `/sbin/validate_data "$package" "$type" "$name" "$@" 1> /dev/null`
-	return $error
+	local _result=`/sbin/validate_data "$_package" "$_type" "$_name" "$@" 2> /dev/null`
+	_error=$?
+	eval "$_result"
+	[ "$_error" = "0" ] || `/sbin/validate_data "$_package" "$_type" "$_name" "$@" 1> /dev/null`
+	return $_error
 }
 
 _procd_wrapper \
@@ -236,7 +283,10 @@ _procd_wrapper \
 	procd_close_service \
 	procd_add_instance \
 	procd_add_config_trigger \
+	procd_add_interface_trigger \
 	procd_add_reload_trigger \
+	procd_add_reload_interface_trigger \
+	procd_add_interface_reload \
 	procd_open_trigger \
 	procd_close_trigger \
 	procd_open_instance \

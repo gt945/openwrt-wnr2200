@@ -55,6 +55,9 @@ ramips_board_detect() {
 	*"AsiaRF AWM002 EVB")
 		name="awm002-evb"
 		;;
+	*"AsiaRF AWAPN2403")
+		name="awapn2403"
+		;;
 	*"BR6524N")
 		name="br6524n"
 		;;
@@ -69,6 +72,9 @@ ramips_board_detect() {
 		;;
 	*"Aztech HW550-3G")
 		name="hw550-3g"
+		;;
+	*"CY-SWR1100")
+		name="cy-swr1100"
 		;;
 	*"DCS-930")
 		name="dcs-930"
@@ -210,6 +216,9 @@ ramips_board_detect() {
 		;;
 	*"RT-N56U")
 		name="rt-n56u"
+		;;
+	*"RUT5XX")
+		name="rut5xx"
 		;;
 	*"Skyline SL-R7205"*)
 		name="sl-r7205"

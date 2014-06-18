@@ -10,11 +10,11 @@ include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=mac80211
 
-PKG_VERSION:=2014-03-31
+PKG_VERSION:=2014-05-22
 PKG_RELEASE:=1
 PKG_SOURCE_URL:=http://mirror2.openwrt.org/sources
 PKG_BACKPORT_VERSION:=
-PKG_MD5SUM:=8b5cf82d6defc5867511014af4afc0b6
+PKG_MD5SUM:=367937d4f8c05cb36ca989ee26abc3df
 
 PKG_SOURCE:=compat-wireless-$(PKG_VERSION)$(PKG_BACKPORT_VERSION).tar.bz2
 PKG_BUILD_DIR:=$(KERNEL_BUILD_DIR)/compat-wireless-$(PKG_VERSION)
@@ -357,8 +357,8 @@ define KernelPackage/rtl8180
   $(call KernelPackage/rtl818x/Default)
   DEPENDS+= @PCI_SUPPORT
   TITLE+= (RTL8180 PCI)
-  FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rtl818x/rtl8180/rtl8180.ko
-  AUTOLOAD:=$(call AutoProbe,rtl8180)
+  FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rtl818x/rtl8180/rtl818x_pci.ko
+  AUTOLOAD:=$(call AutoProbe,rtl818x_pci)
 endef
 
 define KernelPackage/rtl8187
@@ -370,15 +370,12 @@ $(call KernelPackage/rtl818x/Default)
 endef
 
 define KernelPackage/rtlwifi/config
-	menu "Configuration"
-		depends on PACKAGE_kmod-rtlwifi
-
 	config PACKAGE_RTLWIFI_DEBUG
 		bool "Realtek wireless debugging"
+		depends on PACKAGE_kmod-rtlwifi
 		help
 		  Say Y, if you want to debug realtek wireless drivers.
 
-	endmenu
 endef
 
 define KernelPackage/rtlwifi
@@ -386,7 +383,7 @@ define KernelPackage/rtlwifi
   TITLE:=Realtek common driver part
   DEPENDS+= @(PCI_SUPPORT||USB_SUPPORT) +kmod-mac80211 +@DRIVER_11N_SUPPORT
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rtlwifi/rtlwifi.ko
-  MENU:=1
+  HIDDEN:=1
 endef
 
 define KernelPackage/rtlwifi-pci
@@ -573,6 +570,14 @@ endef
 define KernelPackage/ath9k/description
 This module adds support for wireless adapters based on
 Atheros IEEE 802.11n AR5008 and AR9001 family of chipsets.
+endef
+
+define KernelPackage/ath9k/config
+
+	config ATH9K_SUPPORT_PCOEM
+		bool "Support chips used in PC OEM cards"
+		depends on PACKAGE_kmod-ath9k
+	
 endef
 
 define KernelPackage/ath9k-htc
@@ -1065,13 +1070,32 @@ define KernelPackage/b43
   URL:=http://linuxwireless.org/en/users/Drivers/b43
   KCONFIG:= \
   	CONFIG_HW_RANDOM=y
-  DEPENDS+= +kmod-mac80211 +!TARGET_brcm47xx:kmod-bcma +!(TARGET_brcm47xx||TARGET_brcm63xx):kmod-ssb
+  # Depend on PCI_SUPPORT to make sure we can select kmod-bcma or kmod-ssb
+  DEPENDS += \
+	@PCI_SUPPORT +kmod-mac80211 \
+	$(if $(CONFIG_PACKAGE_B43_USE_SSB),+kmod-ssb) \
+	$(if $(CONFIG_PACKAGE_B43_USE_BCMA),+kmod-bcma)
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/b43/b43.ko
   AUTOLOAD:=$(call AutoProbe,b43)
   MENU:=1
 endef
 
 define KernelPackage/b43/config
+
+config PACKAGE_B43_USE_SSB
+	select PACKAGE_kmod-ssb
+	tristate
+	depends on !TARGET_brcm47xx && !TARGET_brcm63xx
+	default PACKAGE_kmod-b43 if PACKAGE_B43_BUSES_BCMA_AND_SSB
+	default PACKAGE_kmod-b43 if PACKAGE_B43_BUSES_SSB
+
+config PACKAGE_B43_USE_BCMA
+	select PACKAGE_kmod-bcma
+	tristate
+	depends on !TARGET_brcm47xx
+	default PACKAGE_kmod-b43 if PACKAGE_B43_BUSES_BCMA_AND_SSB
+	default PACKAGE_kmod-b43 if PACKAGE_B43_BUSES_BCMA
+
   if PACKAGE_kmod-b43
 
 	choice
@@ -1143,6 +1167,7 @@ define KernelPackage/b43/config
 	config B43_FW_SQUASH_COREREVS
 		string "Core revisions to include"
 		depends on B43_FW_SQUASH
+		default "5,6,7,8,9,10,11,13,15" if TARGET_brcm47xx_legacy
 		default "5,6,7,8,9,10,11,13,15,16,29"
 		help
 		  This is a comma seperated list of core revision numbers.
@@ -1156,6 +1181,7 @@ define KernelPackage/b43/config
 	config B43_FW_SQUASH_PHYTYPES
 		string "PHY types to include"
 		depends on B43_FW_SQUASH
+		default "G,LP" if TARGET_brcm47xx_legacy
 		default "G,LP,N,HT"
 		help
 		  This is a comma seperated list of PHY types:
@@ -1172,6 +1198,25 @@ define KernelPackage/b43/config
 
 		  Example (keep files for G-PHY and N-PHY):
 		    G,N
+
+	choice
+		prompt "Supported buses"
+		default PACKAGE_B43_BUSES_BCMA_AND_SSB
+		help
+		  This allows choosing buses that b43 should support.
+
+	config PACKAGE_B43_BUSES_BCMA_AND_SSB
+		depends on !TARGET_brcm47xx_legacy
+		bool "BCMA and SSB"
+
+	config PACKAGE_B43_BUSES_BCMA
+		depends on !TARGET_brcm47xx_legacy
+		bool "BCMA only"
+
+	config PACKAGE_B43_BUSES_SSB
+		bool "SSB only"
+
+	endchoice
 
 	config PACKAGE_B43_DEBUG
 		bool "Enable debug output and debugfs for b43"
@@ -1193,6 +1238,7 @@ define KernelPackage/b43/config
 
 	config PACKAGE_B43_PHY_N
 		bool "Enable support for N-PHYs"
+		default n if TARGET_brcm47xx_legacy
 		default y
 		help
 		  Enable support for N-PHY. This includes support for the following devices:
@@ -1203,8 +1249,19 @@ define KernelPackage/b43/config
 
 		  If unsure, say Y.
 
+	config PACKAGE_B43_PHY_LP
+		bool "Enable support for LP-PHYs"
+		default y
+		help
+		  Enable support for LP-PHY. This includes support for the following devices:
+		  PCI: BCM4312
+		  SoC: BCM5354
+
+		  If unsure, say Y.
+
 	config PACKAGE_B43_PHY_HT
 		bool "Enable support for HT-PHYs"
+		default n if TARGET_brcm47xx_legacy
 		default y
 		help
 		  Enable support for HT-PHY. This includes support for the following devices:
@@ -1398,6 +1455,7 @@ config-$(call config_package,ath9k-common) += ATH9K_COMMON
 config-$(CONFIG_TARGET_ar71xx) += ATH9K_AHB
 config-$(CONFIG_PCI) += ATH9K_PCI
 config-$(CONFIG_ATH_USER_REGD) += ATH_USER_REGD
+config-$(CONFIG_ATH9K_SUPPORT_PCOEM) += ATH9K_PCOEM
 
 config-$(call config_package,ath9k-htc) += ATH9K_HTC
 config-$(call config_package,ath10k) += ATH10K ATH10K_PCI
@@ -1412,8 +1470,11 @@ endif
 config-$(call config_package,carl9170) += CARL9170
 
 config-$(call config_package,b43) += B43
-config-y += B43_SSB B43_BCMA B43_PHY_LP
+config-$(CONFIG_PACKAGE_B43_BUSES_BCMA_AND_SSB) += B43_BUSES_BCMA_AND_SSB
+config-$(CONFIG_PACKAGE_B43_BUSES_BCMA) += B43_BUSES_BCMA
+config-$(CONFIG_PACKAGE_B43_BUSES_SSB) += B43_BUSES_SSB
 config-$(CONFIG_PACKAGE_B43_PHY_N) += B43_PHY_N
+config-$(CONFIG_PACKAGE_B43_PHY_LP) += B43_PHY_LP
 config-$(CONFIG_PACKAGE_B43_PHY_HT) += B43_PHY_HT
 config-$(CONFIG_PACKAGE_B43_PIO) += B43_PIO
 config-$(CONFIG_PACKAGE_B43_DEBUG) += B43_DEBUG

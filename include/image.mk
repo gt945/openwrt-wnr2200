@@ -46,7 +46,7 @@ endif
 
 JFFS2OPTS += $(MKFS_DEVTABLE_OPT)
 
-SQUASHFS_BLOCKSIZE := 256k
+SQUASHFS_BLOCKSIZE := $(CONFIG_TARGET_SQUASHFS_BLOCK_SIZE)k
 SQUASHFSOPT := -b $(SQUASHFS_BLOCKSIZE)
 SQUASHFSOPT += -p '/dev d 755 0 0' -p '/dev/console c 600 0 0 5 1'
 SQUASHFSCOMP := gzip
@@ -129,6 +129,20 @@ ifneq ($(CONFIG_TARGET_ROOTFS_SQUASHFS),)
     endef
 endif
 
+# $(1): board name
+# $(2): kernel image
+# $(3): rootfs image
+ifneq ($(CONFIG_NAND_SUPPORT),)
+   define Image/Build/SysupgradeNAND
+	mkdir -p $(KDIR_TMP)/sysupgrade-$(1)/
+	echo "BOARD=$(1)" > $(KDIR_TMP)/sysupgrade-$(1)/CONTROL
+	[ -z "$(2)" ] || $(CP) $(2) $(KDIR_TMP)/sysupgrade-$(1)/kernel
+	[ -z "$(3)" ] || $(CP) $(3) $(KDIR_TMP)/sysupgrade-$(1)/root
+	(cd $(KDIR_TMP); $(TAR) cvf \
+		$(BIN_DIR)/$(IMG_PREFIX)-$(1)-ubi-sysupgrade.tar sysupgrade-$(1))
+   endef
+endif
+
 ifneq ($(CONFIG_TARGET_ROOTFS_UBIFS),)
     define Image/mkfs/ubifs/generate
 	$(CP) ./ubinize$(1).cfg $(KDIR)
@@ -184,13 +198,13 @@ ifneq ($(CONFIG_TARGET_ROOTFS_TARGZ),)
 endif
 
 ifneq ($(CONFIG_TARGET_ROOTFS_EXT4FS),)
-  E2SIZE=$(shell echo $$(($(CONFIG_TARGET_ROOTFS_PARTSIZE)*1024)))
+  E2SIZE=$(shell echo $$(($(CONFIG_TARGET_ROOTFS_PARTSIZE)*1024*1024/$(CONFIG_TARGET_EXT4_BLOCKSIZE))))
 
   define Image/mkfs/ext4
 # generate an ext2 fs
-	$(STAGING_DIR_HOST)/bin/genext2fs -U -b $(E2SIZE) -N $(CONFIG_TARGET_ROOTFS_MAXINODE) -d $(TARGET_DIR)/ $(KDIR)/root.ext4 -m $(CONFIG_TARGET_ROOTFS_RESERVED_PCT) $(MKFS_DEVTABLE_OPT)
+	$(STAGING_DIR_HOST)/bin/genext2fs -U -B $(CONFIG_TARGET_EXT4_BLOCKSIZE) -b $(E2SIZE) -N $(CONFIG_TARGET_EXT4_MAXINODE) -d $(TARGET_DIR)/ $(KDIR)/root.ext4 -m $(CONFIG_TARGET_EXT4_RESERVED_PCT) $(MKFS_DEVTABLE_OPT)
 # convert it to ext4
-	$(STAGING_DIR_HOST)/bin/tune2fs -O extents,uninit_bg,dir_index $(KDIR)/root.ext4
+	$(STAGING_DIR_HOST)/bin/tune2fs $(if $(CONFIG_TARGET_EXT4_JOURNAL),-j) -O extents,uninit_bg,dir_index $(KDIR)/root.ext4
 # fix it up
 	$(STAGING_DIR_HOST)/bin/e2fsck -fy $(KDIR)/root.ext4
 	$(call Image/Build,ext4)

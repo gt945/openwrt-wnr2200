@@ -119,6 +119,7 @@ hostapd_common_add_bss_config() {
 	config_add_int dae_port
 
 	config_add_string nasid
+	config_add_string ownip
 	config_add_string iapp_interface
 	config_add_string eap_type ca_cert client_cert identity auth priv_key priv_key_pwd
 
@@ -151,7 +152,7 @@ hostapd_set_bss_options() {
 		maxassoc max_inactivity disassoc_low_ack isolate auth_cache \
 		wps_pushbutton wps_label ext_registrar wps_pbc_in_m1 \
 		wps_device_type wps_device_name wps_manufacturer wps_pin \
-		macfilter ssid wmm hidden short_preamble
+		macfilter ssid wmm hidden short_preamble rsn_preauth
 
 	set_default isolate 0
 	set_default maxassoc 0
@@ -207,7 +208,7 @@ hostapd_set_bss_options() {
 				auth_server auth_secret auth_port \
 				acct_server acct_secret acct_port \
 				dae_client dae_secret dae_port \
-				nasid rsn_preauth iapp_interface \
+				nasid iapp_interface ownip \
 				eap_reauth_period
 
 			# legacy compatibility
@@ -238,6 +239,7 @@ hostapd_set_bss_options() {
 			}
 
 			append bss_conf "nas_identifier=$nasid" "$N"
+                        [ -n "$ownip" ] && append bss_conf "own_ip_addr=$ownip" "$N"
 			append bss_conf "eapol_key_index_workaround=1" "$N"
 			append bss_conf "ieee8021x=1" "$N"
 			append bss_conf "wpa_key_mgmt=WPA-EAP" "$N"
@@ -274,7 +276,7 @@ hostapd_set_bss_options() {
 		wps_state=2
 		[ -n "$wps_configured" ] && wps_state=1
 
-		[ "$ext_registrar" -gt 0 -a -n "$bridge" ] && append bss_conf "upnp_iface=$bridge" "$N"
+		[ "$ext_registrar" -gt 0 -a -n "$network_bridge" ] && append bss_conf "upnp_iface=$network_bridge" "$N"
 
 		append bss_conf "eap_server=1" "$N"
 		append bss_conf "ap_pin=$wps_pin" "$N"
@@ -295,10 +297,10 @@ hostapd_set_bss_options() {
 	}
 
 	if [ "$wpa" -ge "2" ]; then
-		if [ -n "$bridge" -a "$rsn_preauth" = 1 ]; then
+		if [ -n "$network_bridge" -a "$rsn_preauth" = 1 ]; then
 			set_default auth_cache 1
 			append bss_conf "rsn_preauth=1" "$N"
-			append bss_conf "rsn_preauth_interfaces=$bridge" "$N"
+			append bss_conf "rsn_preauth_interfaces=$network_bridge" "$N"
 		else
 			set_default auth_cache 0
 		fi

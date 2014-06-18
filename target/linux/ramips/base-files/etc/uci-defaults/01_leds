@@ -35,6 +35,9 @@ case $board in
 		ucidef_set_led_rssi "rssihigh" "RSSIHIGH" "all0256n:green:rssihigh" "wlan0" "70" "100" "-69" "8"
 		set_wifi_led "rt2800pci-phy0::radio"
 		;;
+	awapn2403)
+		set_wifi_led "rt2800soc-phy0::radio"
+		;;
 	ar725w)
 		set_wifi_led "rt2800soc-phy0::radio"
 		;;
@@ -59,6 +62,10 @@ case $board in
 		;;
 	br6524n)
 		set_wifi_led "edimax:blue:wlan"
+		;;
+	cy-swr1100)
+		ucidef_set_led_default "wps" "WPS" "samsung:blue:wps" "0"
+		set_usb_led "samsung:blue:usb"
 		;;
 	d105)
 		ucidef_set_led_default "power" "POWER" "d105:red:power" "1"

@@ -18,6 +18,7 @@ ifneq ($(IGNORE_ERRORS),)
   package-n-filter := $(filter-out $(package-y) $(package-m),$(package-))
   package-ignore-errors := $(filter n m y,$(IGNORE_ERRORS))
   package-ignore-errors := $(if $(package-ignore-errors),$(package-ignore-errors),n m)
+  $(curdir)/builddirs-ignore-download := $(foreach m,$(package-ignore-errors),$(package-$(m)-filter))
   $(curdir)/builddirs-ignore-compile := $(foreach m,$(package-ignore-errors),$(package-$(m)-filter))
 endif
 
@@ -25,7 +26,7 @@ ifdef CONFIG_USE_MKLIBS
   define mklibs
 	rm -rf $(TMP_DIR)/mklibs-progs $(TMP_DIR)/mklibs-out
 	# first find all programs and add them to the mklibs list
-	find $(STAGING_DIR_ROOT) -type f -perm +100 -exec \
+	find $(STAGING_DIR_ROOT) -type f -perm /100 -exec \
 		file -r -N -F '' {} + | \
 		awk ' /executable.*dynamically/ { print $$1 }' > $(TMP_DIR)/mklibs-progs
 	# find all loadable objects that are not regular libraries and add them to the list as well

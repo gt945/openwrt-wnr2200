@@ -67,6 +67,8 @@ define Host/Compile
 	#$(call cc,mkhilinkfw, -lcrypto)
 	$(call cc,mkdcs932, -Wall)
 	$(call cc,mkheader_gemtek,-lz)
+	$(call cc,mkrtn56uimg, -lz)
+	$(call cc,dgn3500sum)
 endef
 
 define Host/Install
