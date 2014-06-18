@@ -1,0 +1,10 @@
+--- a/libpcap/pcap-int.h
++++ b/libpcap/pcap-int.h
+@@ -36,6 +36,7 @@
+ #ifndef pcap_int_h
+ #define	pcap_int_h
+ 
++#include "config.h"
+ #include <pcap/pcap.h>
+ 
+ #ifdef __cplusplus
