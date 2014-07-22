@@ -160,6 +160,9 @@ ramips_board_detect() {
 	*"HAME MPR-A2")
  		name="mpr-a2"
  		;;
+	*"Planex MZK-750DHP")
+		name="mzk-750dhp"
+		;;
 	*"NBG-419N")
 		name="nbg-419n"
 		;;
@@ -241,6 +244,9 @@ ramips_board_detect() {
 	*"WHR-600D")
 		name="whr-600d"
 		;;
+	*"WHR-1166D")
+		name="whr-1166d"
+		;;
 	*"WHR-G300N")
 		name="whr-g300n"
 		;;
@@ -298,8 +304,17 @@ ramips_board_detect() {
 	*"WRTNODE")
 		name="wrtnode"
 		;;
+	*"Wansview NCS601W")
+		name="ncs601w"
+		;;
 	*"Sercomm NA930")
 		name="na930"
+		;;
+	*"Zbtlink ZBT-WA05")
+		name="zbt-wa05"
+		;;
+	*"ZBT WR8305RT")
+		name="wr8305rt"
 		;;
 	*)
 		name="generic"

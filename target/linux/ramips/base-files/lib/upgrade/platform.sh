@@ -89,9 +89,11 @@ platform_check_image() {
 	ur-336un |\
 	wr512-3gn |\
 	wmr300 |\
+	wr8305rt |\
 	wrtnode |\
 	x5 |\
-	x8)
+	x8 |\
+	zbt-wa05)
 		[ "$magic" != "27051956" ] && {
 			echo "Invalid image type."
 			return 1

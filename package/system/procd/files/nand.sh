@@ -4,7 +4,10 @@
 
 . /lib/functions.sh
 
-# 'data' partition on NAND contains UBI
+# 'kernel' partition on NAND contains the kernel
+CI_KERNPART="kernel"
+
+# 'ubi' partition on NAND contains UBI
 CI_UBIPART="ubi"
 
 nand_find_volume() {
@@ -36,7 +39,7 @@ nand_find_ubi() {
 	done
 }
 
-get_magic_long() {
+nand_get_magic_long() {
 	dd if="$1" skip=$2 bs=4 count=1 2>/dev/null | hexdump -v -n 4 -e '1/1 "%02x"'
 }
 
@@ -70,7 +73,7 @@ identify_magic() {
 
 
 identify() {
-	identify_magic $(get_magic_long "$1" "${2:-0}")
+	identify_magic $(nand_get_magic_long "$1" "${2:-0}")
 }
 
 identify_tar() {
@@ -180,7 +183,7 @@ nand_do_upgrade_success() {
 	
 	sync
 	[ -f "$conf_tar" ] && nand_restore_config "$conf_tar"
-	echo "sysupgrade successfull"
+	echo "sysupgrade successful"
 	reboot -f
 }
 
@@ -221,18 +224,18 @@ nand_upgrade_ubifs() {
 nand_upgrade_tar() {
 	local tar_file="$1"
 	local board_name="$(cat /tmp/sysinfo/board_name)"
-	local kernel_mtd="$(find_mtd_index kernel)"
+	local kernel_mtd="$(find_mtd_index $CI_KERNPART)"
 
 	local kernel_length=`(tar xf $tar_file sysupgrade-$board_name/kernel -O | wc -c) 2> /dev/null`
 	local rootfs_length=`(tar xf $tar_file sysupgrade-$board_name/root -O | wc -c) 2> /dev/null`
 
-	local rootfs_type="$(identify_tar "$tar_file" root)"
+	local rootfs_type="$(identify_tar "$tar_file" sysupgrade-$board_name/root)"
 
 	local has_kernel=1
 	local has_env=0
 
 	[ "kernel_length" = 0 -o -z "$kernel_mtd" ] || {
-		tar xf $tar_file sysupgrade-$board_name/kernel -O | mtd write - kernel
+		tar xf $tar_file sysupgrade-$board_name/kernel -O | mtd write - $CI_KERNPART
 	}
 	[ "kernel_length" = 0 -o ! -z "$kernel_mtd" ] && has_kernel=0
 
@@ -242,7 +245,7 @@ nand_upgrade_tar() {
 	[ "$has_kernel" = "1" ] && {
 		local kern_ubivol="$(nand_find_volume $ubidev kernel)"
 	 	tar xf $tar_file sysupgrade-$board_name/kernel -O | \
-			ubiupdatevol /dev/$kern_ubivol -s $kern_length -
+			ubiupdatevol /dev/$kern_ubivol -s $kernel_length -
 	}
 
 	local root_ubivol="$(nand_find_volume $ubidev rootfs)"

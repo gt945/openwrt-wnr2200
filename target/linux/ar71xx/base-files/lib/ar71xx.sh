@@ -91,6 +91,12 @@ tplink_board_detect() {
 	hwver="v${hwver#0}"
 
 	case "$hwid" in
+	"015000"*)
+		model="EasyLink EL-M150"
+		;;
+	"015300"*)
+		model="EasyLink EL-MINI"
+		;;
 	"3C0001"*)
 		model="OOLITE"
 		;;
@@ -138,6 +144,9 @@ tplink_board_detect() {
 		;;
 	"085000"*)
 		model="TP-Link TL-WA850RE"
+		;;
+	"086000"*)
+		model="TP-Link TL-WA860RE"
 		;;
 	"090100"*)
 		model="TP-Link TL-WA901N/ND"
@@ -304,8 +313,26 @@ ar71xx_board_detect() {
 	*"Dragino v2")
 		name="dragino2"
 		;;
+	*"EAP300 v2")
+		name="eap300v2"
+		;;
 	*EAP7660D)
 		name="eap7660d"
+		;;
+	*EL-M150)
+		name="el-m150"
+		;;
+	*EL-MINI)
+		name="el-mini"
+		;;
+	*"GL-CONNECT INET v1")
+		name="gl-inet"
+		;;
+	*"EnGenius ESR1750")
+		name="esr1750"
+		;;
+	*"EnGenius ESR900")
+		name="esr900"
 		;;
 	*JA76PF)
 		name="ja76pf"
@@ -318,6 +345,9 @@ ar71xx_board_detect() {
 		;;
 	*"Nanostation M")
 		name="nanostation-m"
+		;;
+	*"Nanostation M XW")
+		name="nanostation-m-xw"
 		;;
 	*JWAP003)
 		name="jwap003"
@@ -451,8 +481,17 @@ ar71xx_board_detect() {
 	*"RouterBOARD 2011UAS")
 		name="rb-2011uas"
 		;;
+	*"RouterBOARD 2011UiAS")
+		name="rb-2011uias"
+		;;
 	*"RouterBOARD 2011UAS-2HnD")
 		name="rb-2011uas-2hnd"
+		;;
+	*"RouterBOARD SXT Lite2")
+		name="rb-sxt2n"
+		;;
+	*"RouterBOARD SXT Lite5")
+		name="rb-sxt5n"
 		;;
 	*"Rocket M")
 		name="rocket-m"
@@ -523,6 +562,9 @@ ar71xx_board_detect() {
 	*TL-WA850RE)
 		name="tl-wa850re"
 		;;
+	*"TL-WA830RE v2")
+		name="tl-wa830re-v2"
+		;;
 	*"TL-WA801ND v2")
 		name="tl-wa801nd-v2"
 		;;
@@ -585,6 +627,9 @@ ar71xx_board_detect() {
 		;;
 	*"TL-MR13U")
 		name="tl-mr13u"
+		;;
+	*"Tube2H")
+		name="tube2h"
 		;;
 	*UniFi)
 		name="unifi"
