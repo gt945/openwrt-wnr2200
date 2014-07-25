@@ -94,7 +94,7 @@ static void __init wnr2200_setup(void)
 	ath79_eth0_data.speed = SPEED_100;
 	ath79_eth0_data.duplex = DUPLEX_FULL;
 
-	ath79_init_mac(ath79_eth1_data.mac_addr, art+WNR2200_MAC1_OFFSET, 0);
+	ath79_init_mac(ath79_eth1_data.mac_addr, art+WNR2200_MAC1_OFFSET, 1);
 	ath79_eth1_data.phy_if_mode = PHY_INTERFACE_MODE_RMII;
 	ath79_eth1_data.phy_mask = 0x10;
 
@@ -102,7 +102,7 @@ static void __init wnr2200_setup(void)
 	ath79_register_eth(1);
 
 	ath79_register_m25p80(NULL);
-	ap91_pci_init(art + WNR2200_PCIE_CALDATA_OFFSET, NULL);
+	ap91_pci_init(art + WNR2200_PCIE_CALDATA_OFFSET, art+WNR2200_MAC1_OFFSET);
 	ap9x_pci_setup_wmac_led_pin(0, WNR2200_GPIO_LED_WLAN);
 	
 	ath79_register_leds_gpio(-1, ARRAY_SIZE(wnr2200_leds_gpio),
