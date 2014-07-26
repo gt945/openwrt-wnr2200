@@ -94,7 +94,7 @@ static void __init wnr2200_setup(void)
 	ath79_eth0_data.speed = SPEED_100;
 	ath79_eth0_data.duplex = DUPLEX_FULL;
 
-	ath79_init_mac(ath79_eth1_data.mac_addr, art+WNR2200_MAC0_OFFSET, 1);
+	ath79_init_mac(ath79_eth1_data.mac_addr, art+WNR2200_MAC1_OFFSET, 0);
 	ath79_eth1_data.phy_if_mode = PHY_INTERFACE_MODE_RMII;
 	ath79_eth1_data.phy_mask = 0x10;
 
